@@ -1,0 +1,322 @@
+[
+  {
+    "name": "Lead Reception & Qualification",
+    "nodes": [
+      {
+        "parameters": {
+          "httpMethod": {"__rl": true, "mode": "list", "value": "POST"},
+          "path": "lead-calificacion",
+          "responseMode": "lastNode",
+          "options": {}
+        },
+        "id": "wf1-wh",
+        "name": "Webhook Trigger",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 1,
+        "webhookId": "lead-calificacion",
+        "position": [250, 300]
+      },
+      {
+        "parameters": {
+          "jsCode": "const d = $input.first().json;\nconst body = d.body || d;\nlet score = 0;\nlet tag = \"lead_frio\";\n\nif (body.email && body.email.includes(\"@\")) score += 20;\nif (body.telefono && body.telefono.length > 7) score += 25;\nif (body.empresa) score += 15;\nif (body.mensaje && body.mensaje.length > 20) score += 20;\nif (body.interes === \"plataforma completa\") { score += 20; tag = \"lead_quente\"; }\nelse if (body.interes === \"automatizacion\") { score += 15; tag = \"lead_morno\"; }\n\nconst empresaTam = body.empleados || \"\";\nif (empresaTam.includes(\"21\") || empresaTam.includes(\"50\")) { score += 15; tag = \"lead_quente\"; }\nif (empresaTam.includes(\"51\")) { score += 20; tag = \"lead_quente\"; }\n\nreturn [{json: {...body, lead_score: score, lead_tag: tag, timestamp: new Date().toISOString()}}];"
+        },
+        "id": "wf1-code",
+        "name": "Calificar Lead",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 1,
+        "position": [550, 300]
+      },
+      {
+        "parameters": {
+          "jsCode": "const d = $input.first().json;\nreturn [{json: {...d, ruta: d.lead_score >= 50 ? \"quente\" : \"frio\"}}];"
+        },
+        "id": "wf1-code2",
+        "name": "Decidir",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 1,
+        "position": [850, 300]
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {"caseSensitive": true, "leftValue": "", "typeValidation": "strict"},
+            "conditions": [{"id": "cond1", "leftValue": "={{ $json.ruta }}", "rightValue": "=quente", "operator": {"type": "string", "operation": "equals"}}],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "id": "wf1-if",
+        "name": "Es Quente?",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 1,
+        "position": [1150, 300]
+      },
+      {
+        "parameters": {
+          "to": "={{ $json.email }}",
+          "subject": "Gracias {{ $json.nombre }} - Sural",
+          "text": "=Hola {{ $json.nombre }},\\n\\nGracias por tu interes en Sural. Te responderemos en las proximas 2 horas.\\n\\nEquipo Sural",
+          "options": {}
+        },
+        "id": "wf1-email1",
+        "name": "Email quente",
+        "type": "n8n-nodes-base.emailSend",
+        "typeVersion": 1,
+        "position": [1450, 150]
+      },
+      {
+        "parameters": {
+          "to": "={{ $json.email }}",
+          "subject": "Hola {{ $json.nombre }} - Sural",
+          "text": "=Hola {{ $json.nombre }},\\n\\nGracias por contactingarnos. Te dejamos algunos recursos mientras.\\n\\nEquipo Sural",
+          "options": {}
+        },
+        "id": "wf1-email2",
+        "name": "Email frio",
+        "type": "n8n-nodes-base.emailSend",
+        "typeVersion": 1,
+        "position": [1450, 450]
+      },
+      {
+        "parameters": {
+          "respondWith": {"__rl": true, "mode": "json", "value": "{\"status\": \"ok\"}"},
+          "options": {}
+        },
+        "id": "wf1-respond",
+        "name": "Responder",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1,
+        "position": [1750, 300]
+      }
+    ],
+    "connections": {
+      "Webhook Trigger": {"main": [[{"node": "Calificar Lead", "type": "main", "index": 0}]]},
+      "Calificar Lead": {"main": [[{"node": "Decidir", "type": "main", "index": 0}]]},
+      "Decidir": {"main": [[{"node": "Es Quente?", "type": "main", "index": 0}]]},
+      "Es Quente?": {"main": [[{"node": "Email quente", "type": "main", "index": 0}], [{"node": "Email frio", "type": "main", "index": 0}]]},
+      "Email quente": {"main": [[{"node": "Responder", "type": "main", "index": 0}]]},
+      "Email frio": {"main": [[{"node": "Responder", "type": "main", "index": 0}]]}
+    }
+  },
+  {
+    "name": "Support Ticket Automation",
+    "nodes": [
+      {
+        "parameters": {
+          "httpMethod": {"__rl": true, "mode": "list", "value": "POST"},
+          "path": "soporte-ticket",
+          "responseMode": "lastNode",
+          "options": {}
+        },
+        "id": "wf2-wh",
+        "name": "Webhook Trigger",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 1,
+        "webhookId": "soporte-ticket",
+        "position": [250, 300]
+      },
+      {
+        "parameters": {
+          "jsCode": "const body = $input.first().json.body || $input.first().json;\nlet priority = \"normal\";\nconst msg = (body.mensaje || \"\").toLowerCase();\nif (msg.includes(\"urgente\") || msg.includes(\"down\")) priority = \"urgente\";\nelse if (msg.includes(\"factura\") || msg.includes(\"pago\")) priority = \"facturacion\";\nreturn [{json: {...body, priority: priority, ticket_id: Date.now()}}];"
+        },
+        "id": "wf2-code",
+        "name": "Clasificar",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 1,
+        "position": [550, 300]
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {"caseSensitive": true, "leftValue": "", "typeValidation": "strict"},
+            "conditions": [{"id": "cond1", "leftValue": "={{ $json.priority }}", "rightValue": "=urgente", "operator": {"type": "string", "operation": "equals"}}],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "id": "wf2-if",
+        "name": "Es Urgente?",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 1,
+        "position": [850, 300]
+      },
+      {
+        "parameters": {
+          "to": "={{ $json.email }}",
+          "subject": "[URGENTE] Recibimos tu consulta - Sural",
+          "text": "=Hola {{ $json.nombre }},\\n\\nRecibimos tu mensaje urgente. Te respondemos en menos de 1 hora.\\n\\nEquipo Sural",
+          "options": {}
+        },
+        "id": "wf2-email1",
+        "name": "Email urgente",
+        "type": "n8n-nodes-base.emailSend",
+        "typeVersion": 1,
+        "position": [1150, 150]
+      },
+      {
+        "parameters": {
+          "to": "={{ $json.email }}",
+          "subject": "Recibimos tu consulta - Sural",
+          "text": "=Hola {{ $json.nombre }},\\n\\nGracias por contactingarnos. Te responderemos en 24 horas.\\n\\nEquipo Sural",
+          "options": {}
+        },
+        "id": "wf2-email2",
+        "name": "Email normal",
+        "type": "n8n-nodes-base.emailSend",
+        "typeVersion": 1,
+        "position": [1150, 450]
+      },
+      {
+        "parameters": {
+          "respondWith": {"__rl": true, "mode": "json", "value": "{\"status\": \"ok\", \"ticket_id\": {{ $json.ticket_id }}}"},
+          "options": {}
+        },
+        "id": "wf2-respond",
+        "name": "Responder",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1,
+        "position": [1450, 300]
+      }
+    ],
+    "connections": {
+      "Webhook Trigger": {"main": [[{"node": "Clasificar", "type": "main", "index": 0}]]},
+      "Clasificar": {"main": [[{"node": "Es Urgente?", "type": "main", "index": 0}]]},
+      "Es Urgente?": {"main": [[{"node": "Email urgente", "type": "main", "index": 0}], [{"node": "Email normal", "type": "main", "index": 0}]]},
+      "Email urgente": {"main": [[{"node": "Responder", "type": "main", "index": 0}]]},
+      "Email normal": {"main": [[{"node": "Responder", "type": "main", "index": 0}]]}
+    }
+  },
+  {
+    "name": "Marketing Nurturing Sequence",
+    "nodes": [
+      {
+        "parameters": {
+          "httpMethod": {"__rl": true, "mode": "list", "value": "POST"},
+          "path": "marketing-new-lead",
+          "responseMode": "lastNode",
+          "options": {}
+        },
+        "id": "wf3-wh",
+        "name": "Webhook Trigger",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 1,
+        "webhookId": "marketing-new-lead",
+        "position": [250, 300]
+      },
+      {
+        "parameters": {
+          "to": "={{ $json.body.email }}",
+          "subject": "Bienvenido {{ $json.body.nombre }} - Sural",
+          "text": "=Hola {{ $json.body.nombre }},\\n\\nGracias por tu interes en Sural. En los proximos dias te enviaremos contenido exclusivo.\\n\\nEquipo Sural",
+          "options": {}
+        },
+        "id": "wf3-email1",
+        "name": "Email dia 0",
+        "type": "n8n-nodes-base.emailSend",
+        "typeVersion": 1,
+        "position": [550, 200]
+      },
+      {
+        "parameters": {
+          "action": "timeDelay",
+          "delayAmount": 3,
+          "unit": "days",
+          "options": {}
+        },
+        "id": "wf3-wait",
+        "name": "Esperar 3 dias",
+        "type": "n8n-nodes-base.wait",
+        "typeVersion": 1,
+        "position": [850, 200]
+      },
+      {
+        "parameters": {
+          "to": "={{ $json.body.email }}",
+          "subject": "{{ $json.body.nombre }}, 3 tips para automatizar - Sural",
+          "text": "=Hola {{ $json.body.nombre }},\\n\\n3 automatizaciones que pueden ayudar a {{ $json.body.empresa }}\\n\\n1. WhatsApp 24/7\\n2. Captura automatica de leads\\n3. Seguimiento inteligente\\n\\nQueres ver una demo? Agenda aqui.\\n\\nMarcos - Sural",
+          "options": {}
+        },
+        "id": "wf3-email2",
+        "name": "Email dia 3",
+        "type": "n8n-nodes-base.emailSend",
+        "typeVersion": 1,
+        "position": [1150, 200]
+      },
+      {
+        "parameters": {
+          "action": "timeDelay",
+          "delayAmount": 7,
+          "unit": "days",
+          "options": {}
+        },
+        "id": "wf3-wait2",
+        "name": "Esperar 7 dias",
+        "type": "n8n-nodes-base.wait",
+        "typeVersion": 1,
+        "position": [1450, 200]
+      },
+      {
+        "parameters": {
+          "to": "={{ $json.body.email }}",
+          "subject": "{{ $json.body.nombre }}, oferta especial para ti - Sural",
+          "text": "=Hola {{ $json.body.nombre }},\\n\\nImplementacion gratuita para empresas que se inscriban este mes.\\n\\nAgenda tu llamada de 20 minutos aqui.\\n\\nMarcos - Sural",
+          "options": {}
+        },
+        "id": "wf3-email3",
+        "name": "Email oferta",
+        "type": "n8n-nodes-base.emailSend",
+        "typeVersion": 1,
+        "position": [1750, 200]
+      },
+      {
+        "parameters": {
+          "respondWith": {"__rl": true, "mode": "json", "value": "{\"status\": \"ok\", \"sequence\": \"started\"}"},
+          "options": {}
+        },
+        "id": "wf3-respond",
+        "name": "Fin",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1,
+        "position": [2050, 200]
+      }
+    ],
+    "connections": {
+      "Webhook Trigger": {"main": [[{"node": "Email dia 0", "type": "main", "index": 0}]]},
+      "Email dia 0": {"main": [[{"node": "Esperar 3 dias", "type": "main", "index": 0}]]},
+      "Esperar 3 dias": {"main": [[{"node": "Email dia 3", "type": "main", "index": 0}]]},
+      "Email dia 3": {"main": [[{"node": "Esperar 7 dias", "type": "main", "index": 0}]]},
+      "Esperar 7 dias": {"main": [[{"node": "Email oferta", "type": "main", "index": 0}]]},
+      "Email oferta": {"main": [[{"node": "Fin", "type": "main", "index": 0}]]}
+    }
+  },
+  {
+    "name": "Weekly Follow-up",
+    "nodes": [
+      {
+        "parameters": {
+          "rule": {
+            "interval": [{"field": "cron", "value": "0 9 * * 1"}]
+          }
+        },
+        "id": "wf4-cron",
+        "name": "Schedule Trigger",
+        "type": "n8n-nodes-base.cron",
+        "typeVersion": 1,
+        "position": [250, 300]
+      },
+      {
+        "parameters": {
+          "jsCode": "// Weekly follow-up check\n// This workflow runs every Monday at 9am\n// In a real implementation, it would query the CRM for leads without follow-up\nconsole.log(\"Weekly follow-up check running...\");\nreturn [{json: {message: \"Weekly follow-up triggered\", timestamp: new Date().toISOString()}}];"
+        },
+        "id": "wf4-code",
+        "name": "Check Leads",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 1,
+        "position": [550, 300]
+      }
+    ],
+    "connections": {
+      "Schedule Trigger": {"main": [[{"node": "Check Leads", "type": "main", "index": 0}]]}
+    }
+  }
+]

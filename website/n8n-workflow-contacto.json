@@ -1,0 +1,60 @@
+{
+  "name": "Contacto Landing Sural",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": {"__rl": true, "mode": "list", "value": "POST"},
+        "path": "contacto-sural",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "node-webhook-1",
+      "name": "Webhook Contacto",
+      "type": "@n8n/n8n-nodes-base.webhook",
+      "typeVersion": 2.2,
+      "webhookId": "contacto-sural",
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "to": "={{ $json.body.email }}",
+        "subject": "Recibimos tu consulta - Sural",
+        "text": "=Hola {{ $json.body.nombre }},\n\nGracias por contactarnos. Te responderemos en las proximas 24 horas.\n\nEl equipo de Sural\n\n---\nDatos recibidos:\nEmpresa: {{ $json.body.empresa }}\nInteres: {{ $json.body.interes }}",
+        "options": {}
+      },
+      "id": "node-email-1",
+      "name": "Email Confirmacion",
+      "type": "@n8n/n8n-nodes-base.emailSend",
+      "typeVersion": 1.6,
+      "position": [550, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": {
+          "__rl": true,
+          "mode": "json",
+          "value": "={\n  \"status\": \"ok\",\n  \"message\": \"Consulta recibida. Te contactaremos pronto.\"\n}"
+        },
+        "options": {}
+      },
+      "id": "node-respond-1",
+      "name": "Responder 200",
+      "type": "@n8n/n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [850, 300]
+    }
+  ],
+  "connections": {
+    "Webhook Contacto": {
+      "main": [[{"node": "Email Confirmacion", "type": "main", "index": 0}]]
+    },
+    "Email Confirmacion": {
+      "main": [[{"node": "Responder 200", "type": "main", "index": 0}]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "description": "Recibe leads del formulario de contacto de la landing page y envia email de confirmacion"
+}
