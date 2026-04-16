@@ -1,0 +1,32 @@
+# Secrets - NO COMMIT
+.env
+secrets.json
+config.py
+
+# Keys & tokens
+*_key*
+*_token*
+*_secret*
+*.pem
+*.key
+
+# Database
+*.sqlite
+*.db
+
+# n8n data
+n8n_data/
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
